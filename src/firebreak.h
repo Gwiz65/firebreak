@@ -1,7 +1,7 @@
 /******************************************************************************
  * firebreak.h                                                                *
  *                                                                            *
- * Copyright (C) 2016 Gwiz <gwiz65@gmail.com>                                 *
+ * Copyright (C) 2017 Gwiz <gwiz65@gmail.com>                                 *
  *                                                                            *
  * firebreak is free software: you can redistribute it and/or modify it       *
  * under the terms of the GNU General Public License as published by the      *
