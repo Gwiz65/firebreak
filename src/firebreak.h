@@ -41,7 +41,7 @@
 #define UI_FILE PACKAGE_DATA_DIR"/ui/firebreak.ui"
 //#define UI_FILE "src/firebreak.ui"
 
-#define MAXDEVICES 10	// max number of network devices
+#define MAXDEVICES 6	// max number of network devices
 
 /****************************
  *        Structures        *

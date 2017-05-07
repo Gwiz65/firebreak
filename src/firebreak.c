@@ -33,6 +33,8 @@
  *       Variables          *
  ****************************/
 GtkWidget *MainWindow;
+GtkWidget *DeviceInfo1;
+
 GtkListStore *IPv4_List;
 GtkListStore *IPv6_List;
 gchar *workdir;
@@ -65,6 +67,26 @@ gboolean GetMsg (void)
 	if (read > 0)
 	{
 		int ctr;
+
+		if (fbmessage.type == 0)
+		{
+			// we have a device message
+			if (fbmessage.data_size == 0)
+			{
+				// no devices found
+				g_print("\nDo Devices found. fbmon will shutdown.");
+			}
+			else
+			{
+
+				g_print("\nFound device: %s", fbmessage.devname);
+			}
+
+
+
+
+			
+		}
 
 		if ((fbmessage.type > 0) && (fbmessage.type < 5)) // ipv4
 		{
@@ -612,10 +634,12 @@ static GtkWidget* CreateMainWindow (void)
 		// get the window object from the ui file
 		window = GTK_WIDGET (gtk_builder_get_object (builder, "mainwindow"));
 		// list store objects
-		IPv4_List = GTK_LIST_STORE (gtk_builder_get_object
-		                            (builder,"liststore1"));
-		IPv6_List = GTK_LIST_STORE (gtk_builder_get_object
-		                            (builder,"liststore2"));
+		IPv4_List = GTK_LIST_STORE (gtk_builder_get_object (builder,"liststore1"));
+		IPv6_List = GTK_LIST_STORE (gtk_builder_get_object (builder,"liststore2"));
+
+		DeviceInfo1 = GTK_WIDGET (gtk_builder_get_object (builder, "label4"));
+
+		
 		// unload builder
 		g_object_unref (builder);
 	}
