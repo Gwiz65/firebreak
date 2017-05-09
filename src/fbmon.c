@@ -221,39 +221,19 @@ int main(int argc, char *argv[])
 					{
 						sprintf(DevInfo[numofdevices].name, dir->d_name);
 						for (i = 0; i < 6; i++) DevInfo[numofdevices].mac[i] = mac[i];
-						printf("%s\n", DevInfo[numofdevices].name);
-						printf("Address: %.2X:%.2X:%.2X:%.2X:%.2X:%.2X \n", 
-						       DevInfo[numofdevices].mac[0], DevInfo[numofdevices].mac[1], DevInfo[numofdevices].mac[2], 
-						       DevInfo[numofdevices].mac[3], DevInfo[numofdevices].mac[4], DevInfo[numofdevices].mac[5]);
+						//printf("%s\n", DevInfo[numofdevices].name);
+						//printf("Address: %.2X:%.2X:%.2X:%.2X:%.2X:%.2X \n", 
+						//       DevInfo[numofdevices].mac[0], DevInfo[numofdevices].mac[1], DevInfo[numofdevices].mac[2], 
+						//       DevInfo[numofdevices].mac[3], DevInfo[numofdevices].mac[4], DevInfo[numofdevices].mac[5]);
 						numofdevices++;
 					}
 				}
 			}
 			closedir(d);
 		}
-		printf("Number of found devices = %i\n", numofdevices);
+
+		//printf("Number of found devices = %i\n", numofdevices);
 		if (numofdevices == 0) 
-		{
-			struct fb_message fbmessage;
-
-			// no devices found - send message and quit
-			memset(&fbmessage, 0, sizeof(struct fb_message));
-			fbmessage.type = 0;
-			fbmessage.data_size = 0;
-			fwrite (&fbmessage, sizeof(struct fb_message), 1, fifofile);
-			//close fifo
-			fclose(fifofile);
-			return 0;
-		}
-
-		// send device messages
-		// type = 0
-		// device = device name
-		// data_size = numofdevices
-		// first 6 of address = mac
-
-
-		for (ctr = 0; ctr < numofdevices; ctr++)
 		{
 			// open fifo for write
 			fifofile = fopen(fifoName,"w");
@@ -261,27 +241,49 @@ int main(int argc, char *argv[])
 			{
 				struct fb_message fbmessage;
 
+				// no devices found - send message and quit
 				memset(&fbmessage, 0, sizeof(struct fb_message));
 				fbmessage.type = 0;
-				sprintf(fbmessage.devname, "%s", DevInfo[ctr].name);
-				memcpy(&fbmessage.address[0], &DevInfo[ctr].mac[0], 6);
-				fbmessage.data_size = numofdevices;
+				fbmessage.data_size = 0;
 				fwrite (&fbmessage, sizeof(struct fb_message), 1, fifofile);
 				//close fifo
 				fclose(fifofile);
 			}
-			else
+			return 0;
+		}
+		else
+		{
+			// send device messages
+			for (ctr = 0; ctr < numofdevices; ctr++)
 			{
-				printf("fbmon: Failed to open fifo.\n");
-				return 1;
+				// open fifo for write
+				fifofile = fopen(fifoName,"w");
+				if (fifofile != NULL)
+				{
+					struct fb_message fbmessage;
+
+					memset(&fbmessage, 0, sizeof(struct fb_message));
+					fbmessage.type = 0;
+					sprintf(fbmessage.devname, "%s", DevInfo[ctr].name);
+					memcpy(&fbmessage.address[0], &DevInfo[ctr].mac[0], 6);
+					fbmessage.data_size = numofdevices;
+					fbmessage.port = ctr + 1;
+					fwrite (&fbmessage, sizeof(struct fb_message), 1, fifofile);
+					//close fifo
+					fclose(fifofile);
+				}
+				else
+				{
+					printf("fbmon: Failed to open fifo.\n");
+					return 1;
+				}
 			}
 		}
-
 		// open a raw socket
 		sock_raw = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 		if(sock_raw < 0)
 		{
-			printf("Socket error\n");
+			printf("fbmon: socket error.\n");
 			return 1;
 		}
 		while (1) // loop forever
@@ -294,7 +296,7 @@ int main(int argc, char *argv[])
 			data_size = recvfrom(sock_raw, buffer, 65536, 0, &saddr, (socklen_t*) &saddr_size);
 			if(data_size < 0 )
 			{
-				printf("Recvfrom error\n");
+				printf("fbmon: recvfrom error.\n");
 				return 1;
 			}
 			else

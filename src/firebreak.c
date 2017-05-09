@@ -34,6 +34,8 @@
  ****************************/
 GtkWidget *MainWindow;
 GtkWidget *DeviceInfo1;
+GtkWidget *DeviceInfo2;
+GtkWidget *DeviceInfo3;
 
 GtkListStore *IPv4_List;
 GtkListStore *IPv6_List;
@@ -74,18 +76,97 @@ gboolean GetMsg (void)
 			if (fbmessage.data_size == 0)
 			{
 				// no devices found
-				g_print("\nDo Devices found. fbmon will shutdown.");
+				// should probably kill threads here since nothing
+				// will happen until rescanned
+				gtk_label_set_text (GTK_LABEL(DeviceInfo1), "No devices found.");
 			}
 			else
 			{
+				gchar *tempchar = NULL;
 
-				g_print("\nFound device: %s", fbmessage.devname);
+				// if port = 1 clear & fill top label1
+				if (fbmessage.port == 1)
+				{
+					tempchar =  g_strdup_printf("%s  %.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
+					                            fbmessage.devname,
+					                            fbmessage.address[0],
+					                            fbmessage.address[1],
+					                            fbmessage.address[2],
+					                            fbmessage.address[3],
+					                            fbmessage.address[4],
+					                            fbmessage.address[5]);
+					gtk_label_set_text (GTK_LABEL(DeviceInfo1), tempchar);
+				}
+				// if port = 2 append to label1
+				if (fbmessage.port == 2)
+				{
+					tempchar = g_strdup_printf("%s\n%s  %.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
+					                           gtk_label_get_label(GTK_LABEL(DeviceInfo1)),
+					                            fbmessage.devname,
+					                            fbmessage.address[0],
+					                            fbmessage.address[1],
+					                            fbmessage.address[2],
+					                            fbmessage.address[3],
+					                            fbmessage.address[4],
+					                            fbmessage.address[5]);
+					gtk_label_set_text (GTK_LABEL(DeviceInfo1), tempchar);
+				}
+				// if port = 3 clear & fill top label2
+				if (fbmessage.port == 3)
+				{
+					tempchar =  g_strdup_printf("%s  %.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
+					                            fbmessage.devname,
+					                            fbmessage.address[0],
+					                            fbmessage.address[1],
+					                            fbmessage.address[2],
+					                            fbmessage.address[3],
+					                            fbmessage.address[4],
+					                            fbmessage.address[5]);
+					gtk_label_set_text (GTK_LABEL(DeviceInfo2), tempchar);
+				}
+				// if port = 4 append to label2
+				if (fbmessage.port == 4)
+				{
+					tempchar = g_strdup_printf("%s\n%s  %.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
+					                           gtk_label_get_label(GTK_LABEL(DeviceInfo2)),
+					                            fbmessage.devname,
+					                            fbmessage.address[0],
+					                            fbmessage.address[1],
+					                            fbmessage.address[2],
+					                            fbmessage.address[3],
+					                            fbmessage.address[4],
+					                            fbmessage.address[5]);
+					gtk_label_set_text (GTK_LABEL(DeviceInfo2), tempchar);
+				}
+				// if port = 5 clear & fill top label3
+				if (fbmessage.port == 5)
+				{
+					tempchar =  g_strdup_printf("%s  %.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
+					                            fbmessage.devname,
+					                            fbmessage.address[0],
+					                            fbmessage.address[1],
+					                            fbmessage.address[2],
+					                            fbmessage.address[3],
+					                            fbmessage.address[4],
+					                            fbmessage.address[5]);
+					gtk_label_set_text (GTK_LABEL(DeviceInfo3), tempchar);
+				}
+				// if port = 6 append to label3
+				if (fbmessage.port == 6)
+				{
+					tempchar = g_strdup_printf("%s\n%s  %.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
+					                           gtk_label_get_label(GTK_LABEL(DeviceInfo3)),
+					                            fbmessage.devname,
+					                            fbmessage.address[0],
+					                            fbmessage.address[1],
+					                            fbmessage.address[2],
+					                            fbmessage.address[3],
+					                            fbmessage.address[4],
+					                            fbmessage.address[5]);
+					gtk_label_set_text (GTK_LABEL(DeviceInfo3), tempchar);
+				}
+				g_free(tempchar);
 			}
-
-
-
-
-			
 		}
 
 		if ((fbmessage.type > 0) && (fbmessage.type < 5)) // ipv4
@@ -639,7 +720,9 @@ static GtkWidget* CreateMainWindow (void)
 
 		DeviceInfo1 = GTK_WIDGET (gtk_builder_get_object (builder, "label4"));
 
-		
+		DeviceInfo2 = GTK_WIDGET (gtk_builder_get_object (builder, "label5"));
+		DeviceInfo3 = GTK_WIDGET (gtk_builder_get_object (builder, "label6"));
+
 		// unload builder
 		g_object_unref (builder);
 	}
@@ -648,6 +731,11 @@ static GtkWidget* CreateMainWindow (void)
 	// zero connection lists
 	memset(IPv4Connections, 0, sizeof(struct fb_connectioninfo) * MAXCONNECTIONS);
 	memset(IPv6Connections, 0, sizeof(struct fb_connectioninfo) * MAXCONNECTIONS);
+	// clear device labels
+	gtk_label_set_text (GTK_LABEL(DeviceInfo1), "");
+	gtk_label_set_text (GTK_LABEL(DeviceInfo2), "");
+	gtk_label_set_text (GTK_LABEL(DeviceInfo3), "");
+	
 	return window;
 }
 
