@@ -36,10 +36,10 @@ GtkWidget *MainWindow;
 GtkWidget *DeviceInfo1;
 GtkWidget *DeviceInfo2;
 GtkWidget *DeviceInfo3;
-
 GtkListStore *IPv4_List;
 GtkListStore *IPv6_List;
-gchar *workdir;
+gchar *workdir = NULL;
+gchar *canaryname = NULL;
 pid_t fbmon_pid;
 FILE *fifofile;
 gboolean getmsgkill = FALSE;
@@ -613,6 +613,22 @@ gboolean RefreshConnectionView(void)
  ******************************************************************************/
 gboolean RunMonitor (void)
 {
+
+
+	FILE *canaryfile;
+
+	// create canary file - delete this file to kill fbmon
+	canaryfile = fopen(canaryname, "w");
+	if (canaryfile != NULL)
+	{
+		fprintf (canaryfile, "fbmon running");
+		fclose(canaryfile);
+	}
+	else
+	{
+		g_print("Unable to create canary file.\n");
+		return FALSE;
+	}
 	// set fifoName
 	fifoName = g_strconcat (workdir, "/.fbmonfifo", NULL);	
 	// create fifo
@@ -678,12 +694,13 @@ gboolean RunMonitor (void)
  ******************************************************************************/
 void MainWindowDestroy (GtkWidget *widget, gpointer data)
 {
+	// delete canary file to kill fbmon
+	if (stat(canaryname, &st) == 0) remove(canaryname);
 	// kill threads
 	getmsgkill = TRUE;
 	cullloopkill = TRUE;
 	refreshloopkill = TRUE;
-	// kill child process
-	kill(fbmon_pid, SIGKILL);
+	sleep(1);
 	// close & delete fifo
 	if (fifofile != NULL) fclose(fifofile);
 	unlink(fifoName);
@@ -752,6 +769,8 @@ int main (int argc, char *argv[])
 	workdir = g_strconcat (g_get_home_dir (), "/.firebreak", NULL);
 	// make sure work directory exists
 	if (stat (workdir, &st) == -1) mkdir (workdir, 0700);
+	// set canary name	
+	canaryname = g_strconcat (workdir, "/.fbmonstat", NULL);	
 	// initialize gtk
 	gtk_init (&argc, &argv);
 	// create main window

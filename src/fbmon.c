@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
 		// no args
 		FILE *fifofile;
 		char fifoName[PATH_MAX];
+		char canaryname[PATH_MAX];
 		DIR           *d;
 		struct dirent *dir;
 		struct dev_info DevInfo[MAXDEVICES];
@@ -176,12 +177,12 @@ int main(int argc, char *argv[])
 
 
 		//printf("fbmon: Now running. Woo hoo!\n");
-		// open and close fifo so gui won't block
 
+		// set fifo name
 		sprintf(fifoName, "%s%s", getenv ("HOME"),"/.firebreak/.fbmonfifo");
-		//char *s = getenv ("HOME");
-
-
+		// set canary name
+		sprintf(canaryname, "%s%s", getenv ("HOME"),"/.firebreak/.fbmonstat");
+		// open and close fifo so gui won't block
 		fifofile = fopen(fifoName,"w");
 		if (fifofile != NULL) fclose(fifofile);
 		else
@@ -286,7 +287,8 @@ int main(int argc, char *argv[])
 			printf("fbmon: socket error.\n");
 			return 1;
 		}
-		while (1) // loop forever
+		
+		while (!(stat (canaryname, &st) == -1)) // loop while canary file exists
 		{
 			saddr_size = sizeof saddr;
 			struct fb_message fbmessage;
