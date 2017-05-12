@@ -838,9 +838,14 @@ int main (int argc, char *argv[])
 	// set our work directory
 	workdir = g_strconcat (g_get_home_dir (), "/.firebreak", NULL);
 	// make sure work directory exists
+
 	if (stat (workdir, &st) == -1) mkdir (workdir, 0700);
+	// temporarily use canaryname to deletfifo
+	canaryname = g_strconcat (workdir, "/.fbmonfifo", NULL);	
+	if (stat(canaryname, &st) == 0) remove(canaryname);
 	// set canary name	
 	canaryname = g_strconcat (workdir, "/.fbmonstat", NULL);	
+	if (stat(canaryname, &st) == 0) remove(canaryname);
 	// initialize gtk
 	gtk_init (&argc, &argv);
 	// create main window
