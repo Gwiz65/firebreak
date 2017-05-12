@@ -52,6 +52,71 @@ struct fb_connectioninfo IPv6Connections[MAXCONNECTIONS];
 
 /****************************************************************************
  *                                                                          *
+ * Function: Check_for_Process                                              *
+ *                                                                          *
+ * Purpose : See if firebreak is already running                            *
+ *           returns true if already running, false otherwise               *
+ *                                                                          *
+ ****************************************************************************/
+gboolean Check_for_Process(void)
+{
+	gboolean func_ret = FALSE;
+	DIR *procdir;
+	struct dirent *procdirent;
+	gint numoffirebreaks = 0;
+
+	procdir = opendir("/proc");
+	if (procdir)
+	{
+		while ((procdirent = readdir(procdir)) != NULL)
+		{
+			uint32_t pidnum = 0;
+
+			pidnum = atol(procdirent->d_name);
+			if (pidnum > 0)
+			{
+				FILE *statusfile;
+				char filestr[2048];
+				gchar *line = NULL;
+				size_t len = 0;
+				int ctr;
+				char progname[256]; // temp string to hold program name
+
+				sprintf(filestr, "/proc/%u/status", pidnum);
+				// make sure file exists
+				if (!(stat (filestr, &st) == -1)) 
+				{
+					statusfile = fopen(filestr, "r");
+					if (statusfile != NULL)
+					{
+						ctr = 0;
+						// get first line - Name:	systemd-logind
+						if (getline (&line, &len, statusfile) != -1)
+						{
+							// get process name
+							while ((line[ctr] != '\0') &&
+							       (line[ctr] != '\n')) ctr++;
+							if (line[ctr] == '\0') ctr--;
+							if (line[ctr] == '\n') ctr--;
+							ctr = ctr - 4;
+							if (ctr > 0) snprintf(progname, ctr, "%s", &line[6]);
+							//check if firebreak exists
+							if (!strncmp(progname, "firebreak", 9)) numoffirebreaks++;
+						}
+						fclose (statusfile);
+					}
+				}
+				g_free(line);
+			}
+		}
+		closedir(procdir);
+	}
+	if (numoffirebreaks > 1) func_ret = TRUE;
+	return func_ret;
+}
+
+/****************************************************************************
+ *                                                                          *
  * Function: GetMsg                                                         *
  *                                                                          *
  * Purpose :                                                                *
@@ -247,6 +312,7 @@ gboolean GetMsg (void)
 					char filestr[2048];
 					gchar *line = NULL;
 					size_t len = 0;
+					
 
 					sprintf(progname, "%s", ""); //default
 					// open /proc/$pid$/status file
@@ -613,8 +679,6 @@ gboolean RefreshConnectionView(void)
  ******************************************************************************/
 gboolean RunMonitor (void)
 {
-
-
 	FILE *canaryfile;
 
 	// create canary file - delete this file to kill fbmon
@@ -706,6 +770,9 @@ void MainWindowDestroy (GtkWidget *widget, gpointer data)
 	unlink(fifoName);
 	// release our widgets
 	gtk_widget_destroy (MainWindow);
+	gtk_widget_destroy (DeviceInfo1);
+	gtk_widget_destroy (DeviceInfo2);
+	gtk_widget_destroy (DeviceInfo3);
 	// kill main loop
 	gtk_main_quit ();
 }
@@ -729,17 +796,14 @@ static GtkWidget* CreateMainWindow (void)
 	{
 		// auto-connect signal handlers
 		gtk_builder_connect_signals (builder, NULL);
-		// get the window object from the ui file
+		// get widgets we care about 
 		window = GTK_WIDGET (gtk_builder_get_object (builder, "mainwindow"));
+		DeviceInfo1 = GTK_WIDGET (gtk_builder_get_object (builder, "label4"));
+		DeviceInfo2 = GTK_WIDGET (gtk_builder_get_object (builder, "label5"));
+		DeviceInfo3 = GTK_WIDGET (gtk_builder_get_object (builder, "label6"));
 		// list store objects
 		IPv4_List = GTK_LIST_STORE (gtk_builder_get_object (builder,"liststore1"));
 		IPv6_List = GTK_LIST_STORE (gtk_builder_get_object (builder,"liststore2"));
-
-		DeviceInfo1 = GTK_WIDGET (gtk_builder_get_object (builder, "label4"));
-
-		DeviceInfo2 = GTK_WIDGET (gtk_builder_get_object (builder, "label5"));
-		DeviceInfo3 = GTK_WIDGET (gtk_builder_get_object (builder, "label6"));
-
 		// unload builder
 		g_object_unref (builder);
 	}
@@ -765,6 +829,12 @@ static GtkWidget* CreateMainWindow (void)
  ******************************************************************************/
 int main (int argc, char *argv[])
 {
+	// check if already running
+	if (Check_for_Process())
+	{
+		g_print("Firebreak is already running.\n");
+		exit(1);
+	}
 	// set our work directory
 	workdir = g_strconcat (g_get_home_dir (), "/.firebreak", NULL);
 	// make sure work directory exists
