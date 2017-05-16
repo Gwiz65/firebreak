@@ -52,6 +52,88 @@ struct fb_connectioninfo IPv6Connections[MAXCONNECTIONS];
 
 /****************************************************************************
  *                                                                          *
+ * Function: Rescan                                                         *
+ *                                                                          *
+ * Purpose :                                                                *
+ *                                                                          *
+ ****************************************************************************/
+gboolean Rescan (void)
+{
+	FILE *canaryfile;
+
+	// create canary file - delete this file to kill fbmon
+	canaryfile = fopen(canaryname, "w");
+	if (canaryfile != NULL)
+	{
+		fprintf (canaryfile, "fbmon running");
+		fclose(canaryfile);
+	}
+	else
+	{
+		g_print("Unable to create canary file.\n");
+		return FALSE;
+	}
+	// fork a child process
+	fbmon_pid = fork ();
+	if (fbmon_pid == 0)
+	{
+		// This is the child process.  Execute our monitor prog
+		//g_print("Child process running now\n");
+		if (execlp("fbmon", "fbmon", NULL) == -1)
+			g_print("Unable to run fbmon program. Reinstall Firebreak.\n");
+		_exit(EXIT_FAILURE);
+	}
+	else if (fbmon_pid < 0)
+	{
+		// The fork failed.  Report failure. 
+		g_print("Fork failed.\n");
+		return FALSE;
+	}
+	else
+	{
+		int status;
+		pid_t result;
+
+		// This is the parent process.
+		//g_print("Parent process still running\n");
+		sleep(1);
+		result = waitpid(fbmon_pid, &status, WNOHANG);
+		if (result == 0) 
+		{
+			// Child is alive
+			//g_print("Child started. This is good.\n");
+		} 
+		else 
+		{
+			// Child exited
+			g_print("Child not running. This sucks like an Electrolux\n");
+			return FALSE;
+		}
+	}
+	return FALSE; 	// run once
+}
+
+/****************************************************************************
+ *                                                                          *
+ * Function: on_button1_clicked                                             *
+ *                                                                          *
+ * Purpose :                                                                *
+ *                                                                          *
+ ****************************************************************************/
+void on_button1_clicked (GtkButton *button, gpointer user_data)
+{
+	// set device labels
+	gtk_label_set_text (GTK_LABEL(DeviceInfo1), "Scanning for devices...\n ");
+	gtk_label_set_text (GTK_LABEL(DeviceInfo2), "");
+	gtk_label_set_text (GTK_LABEL(DeviceInfo3), "");
+	// delete canary file to kill fbmon
+	if (stat(canaryname, &st) == 0) remove(canaryname);
+	// call RunMonitor function 
+	gdk_threads_add_timeout (500, (GSourceFunc) Rescan, NULL);
+}
+
+/****************************************************************************
+ *                                                                          *
  * Function: Check_for_Process                                              *
  *                                                                          *
  * Purpose : See if firebreak is already running                            *

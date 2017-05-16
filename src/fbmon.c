@@ -545,7 +545,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		close(sock_raw);
-		break;
+		return 0;
 	}
 		default:
 		{
