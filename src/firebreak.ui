@@ -131,7 +131,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="xalign">0</property>
-                        <property name="label" translatable="yes">&lt;u&gt;Total In&lt;/u&gt;	</property>
+                        <property name="label" translatable="yes">&lt;u&gt;Total Rec'd&lt;/u&gt;</property>
                         <property name="use_markup">True</property>
                       </object>
                       <packing>
@@ -144,7 +144,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="xalign">0</property>
-                        <property name="label" translatable="yes">&lt;u&gt;Total Out&lt;/u&gt;</property>
+                        <property name="label" translatable="yes">&lt;u&gt;Total Sent&lt;/u&gt;</property>
                         <property name="use_markup">True</property>
                       </object>
                       <packing>
