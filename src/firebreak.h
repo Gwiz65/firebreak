@@ -52,6 +52,14 @@ typedef struct dev_info {
 	uint8_t		mac[6];
 }dev_info_t;
 
+// structure to hold device totals
+typedef struct dev_totals {
+	char		name[256];
+	uint32_t	recd;
+	uint32_t	sent;
+	int			slotused;  //0=not used
+}dev_totals_t;
+
 // structure to hold ports we've seen already
 typedef struct existing_ports {
 	uint16_t	port;

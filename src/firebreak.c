@@ -35,7 +35,8 @@
 GtkWidget *MainWindow;
 GtkWidget *Device_label;
 GtkWidget *MAC_label;
-//GtkWidget *DeviceInfo3;
+GtkWidget *Recd_label;
+GtkWidget *Sent_label;
 GtkListStore *IPv4_List;
 GtkListStore *IPv6_List;
 gchar *workdir = NULL;
@@ -49,6 +50,7 @@ gboolean cullloopkill = FALSE;
 gboolean refreshloopkill = FALSE;
 struct fb_connectioninfo IPv4Connections[MAXCONNECTIONS];
 struct fb_connectioninfo IPv6Connections[MAXCONNECTIONS];
+struct dev_totals DeviceTotals[MAXDEVICES];
 
 /****************************************************************************
  *                                                                          *
@@ -60,6 +62,13 @@ struct fb_connectioninfo IPv6Connections[MAXCONNECTIONS];
 gboolean Rescan (void)
 {
 	FILE *canaryfile;
+
+	// zero connection lists
+	memset(IPv4Connections, 0, sizeof(struct fb_connectioninfo) * MAXCONNECTIONS);
+	memset(IPv6Connections, 0, sizeof(struct fb_connectioninfo) * MAXCONNECTIONS);
+
+	// zero device totals
+	memset(DeviceTotals, 0, sizeof(struct dev_totals) * MAXDEVICES);
 
 	// create canary file - delete this file to kill fbmon
 	canaryfile = fopen(canaryname, "w");
@@ -125,7 +134,8 @@ void on_button1_clicked (GtkButton *button, gpointer user_data)
 	// set device labels   
 	gtk_label_set_text (GTK_LABEL(MAC_label), "");
 	gtk_label_set_text (GTK_LABEL(Device_label), "");
-	//gtk_label_set_text (GTK_LABEL(DeviceInfo3), "");
+	gtk_label_set_text (GTK_LABEL(Recd_label), "");
+	gtk_label_set_text (GTK_LABEL(Sent_label), "");
 	// delete canary file to kill fbmon
 	if (stat(canaryname, &st) == 0) remove(canaryname);
 	// call RunMonitor function 
@@ -229,18 +239,14 @@ gboolean GetMsg (void)
 			}
 			else
 			{
-
 				// fill display info
-
-				
 				gchar *tempchar = NULL;
 
-				// if port = 1 clear & fill top label1
+				// if port = 1 clear & fill top labels
 				if (fbmessage.port == 1)
 				{
 					tempchar =  g_strdup_printf("%s", fbmessage.devname);
 					gtk_label_set_text (GTK_LABEL(Device_label), tempchar);
-
 					tempchar =  g_strdup_printf("%.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
 					                            fbmessage.address[0],
 					                            fbmessage.address[1],
@@ -249,17 +255,16 @@ gboolean GetMsg (void)
 					                            fbmessage.address[4],
 					                            fbmessage.address[5]);
 					gtk_label_set_text (GTK_LABEL(MAC_label), tempchar);
-
-					
+					gtk_label_set_text (GTK_LABEL(Recd_label), "0 bytes");
+					gtk_label_set_text (GTK_LABEL(Sent_label), "0 bytes");
 				}
-				// if port > 2 append to label
+				// if port > 2 append to labels
 				if (fbmessage.port > 1)
 				{
 					tempchar = g_strdup_printf("%s\n%s", 
 					                           gtk_label_get_label(GTK_LABEL(Device_label)),
 					                           fbmessage.devname);
 					gtk_label_set_text (GTK_LABEL(Device_label), tempchar);
-
 					tempchar = g_strdup_printf("%s\n%.2X:%.2X:%.2X:%.2X:%.2X:%.2X", 
 					                           gtk_label_get_label(GTK_LABEL(MAC_label)),
 					                            fbmessage.address[0],
@@ -269,17 +274,46 @@ gboolean GetMsg (void)
 					                            fbmessage.address[4],
 					                            fbmessage.address[5]);
 					gtk_label_set_text (GTK_LABEL(MAC_label), tempchar);
-
-
-
+					tempchar = g_strdup_printf("%s\n0 bytes", 
+					                           gtk_label_get_label(GTK_LABEL(Recd_label)));
+					gtk_label_set_text (GTK_LABEL(Recd_label), tempchar);
+					tempchar = g_strdup_printf("%s\n0 bytes", 
+					                           gtk_label_get_label(GTK_LABEL(Sent_label)));
+					gtk_label_set_text (GTK_LABEL(Sent_label), tempchar);
 				}
+				// fill device total list
+				sprintf(DeviceTotals[fbmessage.port - 1].name, "%s", fbmessage.devname);
+				DeviceTotals[fbmessage.port - 1].slotused = 1;
+				//g_print("\nAdded: %s", DeviceTotals[fbmessage.port - 1].name);
 				g_free(tempchar);
-		
-
-
 			}
 		}
-
+		else
+		{
+			// it's not a device message so add to totals
+			int ctr;
+			
+			for (ctr = 0; ctr < MAXDEVICES; ctr++)
+			{
+				if (!g_strcmp0(DeviceTotals[ctr].name, fbmessage.devname))
+				{
+					if ((fbmessage.type == 1) || (fbmessage.type == 3) ||
+					    (fbmessage.type == 5) || (fbmessage.type == 7))
+					{
+						// received
+						DeviceTotals[ctr].recd = DeviceTotals[ctr].recd + fbmessage.data_size;
+						//g_print("\n%s total recd = %d", DeviceTotals[ctr].name, DeviceTotals[ctr].recd);
+					}
+					else if ((fbmessage.type == 2) || (fbmessage.type == 4) ||
+					         (fbmessage.type == 6) || (fbmessage.type == 8))
+					{
+						// sent
+						DeviceTotals[ctr].sent = DeviceTotals[ctr].sent + fbmessage.data_size;
+						//g_print("\n%s total sent = %d", DeviceTotals[ctr].name, DeviceTotals[ctr].sent);
+					}
+				}
+			}
+		}
 		if ((fbmessage.type > 0) && (fbmessage.type < 5)) // ipv4
 		{
 			// see if connection already exists
@@ -575,7 +609,6 @@ gboolean RefreshConnectionView(void)
 
 	if (refreshloopkill) return FALSE;
 	//g_print("RefreshConnectionView function called.\n");
-
 	// IPv4
 	// clear list store
 	gtk_list_store_clear (IPv4_List);
@@ -627,7 +660,6 @@ gboolean RefreshConnectionView(void)
 				gtk_list_store_set (IPv4_List, &iter, 2, "TCP", -1);
 			else
 				gtk_list_store_set (IPv4_List, &iter, 2, "UDP", -1);
-
 			if (sortlist[i].pid < 1) sprintf(temppid, "%s", "");
 			else sprintf(temppid, "%i", sortlist[i].pid);
 			gtk_list_store_set (IPv4_List, &iter, 3, temppid, -1);
@@ -665,7 +697,9 @@ gboolean RefreshConnectionView(void)
 		int i;
 		int j;
 		GtkTreeIter iter;
-
+		int ctr;
+		gchar *tempchar = NULL;
+		
 		// sort sortlist using bubble sort
 		for (i = 0; i < numofconns; i++)
 		{
@@ -712,6 +746,33 @@ gboolean RefreshConnectionView(void)
 				gtk_list_store_set (IPv6_List, &iter, 8, TRUE, -1);
 			g_free(sizetmp);
 		}
+		// update device total labels
+		for (ctr = 0; ctr < MAXDEVICES; ctr++)
+		{
+			if (ctr == 0)
+			{
+				tempchar = g_strdup_printf("%s", g_format_size ((guint64) DeviceTotals[ctr].recd));
+				gtk_label_set_text (GTK_LABEL(Recd_label), tempchar);
+
+				tempchar = g_strdup_printf("%s", g_format_size ((guint64) DeviceTotals[ctr].sent));
+				gtk_label_set_text (GTK_LABEL(Sent_label), tempchar);
+			}
+			else
+			{
+				if (DeviceTotals[ctr].slotused == 1) 
+				{
+					tempchar = g_strdup_printf("%s\n%s", 
+					                           gtk_label_get_label(GTK_LABEL(Recd_label)),
+					                           g_format_size ((guint64) DeviceTotals[ctr].recd));
+					gtk_label_set_text (GTK_LABEL(Recd_label), tempchar);
+					tempchar = g_strdup_printf("%s\n%s", 
+					                           gtk_label_get_label(GTK_LABEL(Sent_label)),
+					                           g_format_size ((guint64) DeviceTotals[ctr].sent));
+					gtk_label_set_text (GTK_LABEL(Sent_label), tempchar);
+				}
+			}
+		}
+		g_free(tempchar);
 	}
 	return TRUE;  //keep runing
 }
@@ -818,7 +879,8 @@ void MainWindowDestroy (GtkWidget *widget, gpointer data)
 	gtk_widget_destroy (MainWindow);
 	gtk_widget_destroy (Device_label);
 	gtk_widget_destroy (MAC_label);
-	//gtk_widget_destroy (DeviceInfo3);
+	gtk_widget_destroy (Recd_label);
+	gtk_widget_destroy (Sent_label);
 	// kill main loop
 	gtk_main_quit ();
 }
@@ -846,7 +908,8 @@ static GtkWidget* CreateMainWindow (void)
 		window = GTK_WIDGET (gtk_builder_get_object (builder, "mainwindow"));
 		Device_label = GTK_WIDGET (gtk_builder_get_object (builder, "label8"));
 		MAC_label = GTK_WIDGET (gtk_builder_get_object (builder, "label9"));
-		//DeviceInfo3 = GTK_WIDGET (gtk_builder_get_object (builder, "label6"));
+		Recd_label = GTK_WIDGET (gtk_builder_get_object (builder, "label10"));
+		Sent_label = GTK_WIDGET (gtk_builder_get_object (builder, "label11"));
 		// list store objects
 		IPv4_List = GTK_LIST_STORE (gtk_builder_get_object (builder,"liststore1"));
 		IPv6_List = GTK_LIST_STORE (gtk_builder_get_object (builder,"liststore2"));
@@ -858,10 +921,15 @@ static GtkWidget* CreateMainWindow (void)
 	// zero connection lists
 	memset(IPv4Connections, 0, sizeof(struct fb_connectioninfo) * MAXCONNECTIONS);
 	memset(IPv6Connections, 0, sizeof(struct fb_connectioninfo) * MAXCONNECTIONS);
+
+	// zero device totals
+	memset(DeviceTotals, 0, sizeof(struct dev_totals) * MAXDEVICES);
+	
 	// clear device display
 	gtk_label_set_text (GTK_LABEL(Device_label), "");
 	gtk_label_set_text (GTK_LABEL(MAC_label), "");
-	//gtk_label_set_text (GTK_LABEL(DeviceInfo3), "");
+	gtk_label_set_text (GTK_LABEL(Recd_label), "");
+	gtk_label_set_text (GTK_LABEL(Sent_label), "");
 	
 	return window;
 }
