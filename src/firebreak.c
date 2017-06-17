@@ -609,6 +609,40 @@ gboolean RefreshConnectionView(void)
 
 	if (refreshloopkill) return FALSE;
 	//g_print("RefreshConnectionView function called.\n");
+
+	// update device total labels
+	if (g_strcmp0 (gtk_label_get_label (GTK_LABEL(Device_label)), ""))
+	{
+		for (ctr = 0; ctr < MAXDEVICES; ctr++)
+		{
+			gchar *tempchar = NULL;
+			
+			if (ctr == 0)
+			{
+				tempchar = g_strdup_printf("%s", g_format_size ((guint64) DeviceTotals[ctr].recd));
+				gtk_label_set_text (GTK_LABEL(Recd_label), tempchar);
+				
+				tempchar = g_strdup_printf("%s", g_format_size ((guint64) DeviceTotals[ctr].sent));
+				gtk_label_set_text (GTK_LABEL(Sent_label), tempchar);
+			}
+			else
+			{
+				if (DeviceTotals[ctr].slotused == 1) 
+				{
+					tempchar = g_strdup_printf("%s\n%s", 
+					                           gtk_label_get_label(GTK_LABEL(Recd_label)),
+					                           g_format_size ((guint64) DeviceTotals[ctr].recd));
+					gtk_label_set_text (GTK_LABEL(Recd_label), tempchar);
+					tempchar = g_strdup_printf("%s\n%s", 
+					                           gtk_label_get_label(GTK_LABEL(Sent_label)),
+					                           g_format_size ((guint64) DeviceTotals[ctr].sent));
+					gtk_label_set_text (GTK_LABEL(Sent_label), tempchar);
+				}
+			}
+			g_free(tempchar);
+		}
+	}
+	    
 	// IPv4
 	// clear list store
 	gtk_list_store_clear (IPv4_List);
@@ -697,8 +731,6 @@ gboolean RefreshConnectionView(void)
 		int i;
 		int j;
 		GtkTreeIter iter;
-		int ctr;
-		gchar *tempchar = NULL;
 		
 		// sort sortlist using bubble sort
 		for (i = 0; i < numofconns; i++)
@@ -746,33 +778,6 @@ gboolean RefreshConnectionView(void)
 				gtk_list_store_set (IPv6_List, &iter, 8, TRUE, -1);
 			g_free(sizetmp);
 		}
-		// update device total labels
-		for (ctr = 0; ctr < MAXDEVICES; ctr++)
-		{
-			if (ctr == 0)
-			{
-				tempchar = g_strdup_printf("%s", g_format_size ((guint64) DeviceTotals[ctr].recd));
-				gtk_label_set_text (GTK_LABEL(Recd_label), tempchar);
-
-				tempchar = g_strdup_printf("%s", g_format_size ((guint64) DeviceTotals[ctr].sent));
-				gtk_label_set_text (GTK_LABEL(Sent_label), tempchar);
-			}
-			else
-			{
-				if (DeviceTotals[ctr].slotused == 1) 
-				{
-					tempchar = g_strdup_printf("%s\n%s", 
-					                           gtk_label_get_label(GTK_LABEL(Recd_label)),
-					                           g_format_size ((guint64) DeviceTotals[ctr].recd));
-					gtk_label_set_text (GTK_LABEL(Recd_label), tempchar);
-					tempchar = g_strdup_printf("%s\n%s", 
-					                           gtk_label_get_label(GTK_LABEL(Sent_label)),
-					                           g_format_size ((guint64) DeviceTotals[ctr].sent));
-					gtk_label_set_text (GTK_LABEL(Sent_label), tempchar);
-				}
-			}
-		}
-		g_free(tempchar);
 	}
 	return TRUE;  //keep runing
 }
